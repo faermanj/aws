@@ -15,9 +15,29 @@
                 "AWS::CloudFormation::Init": {
                     "configSets": {
                         "default": [
+                            "config-brick",
                             "config-repo",
                             "config-gluster"
                         ]
+                    },
+                    "config-brick": {
+                        "commands": {
+                            "format-volume": {
+                                "command": "mkfs.xfs -i size=512 /dev/xvdf"
+                            },
+                            "create-mount-point": {
+                                "command": "mkdir -p /export/brick1"
+                            },
+                            "map-fstab": {
+                                "command": "echo '/dev/xvdf /export/brick1 xfs defaults 1 2' >> /etc/fstab"
+                            },
+                            "remount": {
+                                "command": "mount -a && mount"
+                            },
+                            "create-subdir": {
+                                "command": "mkdir /export/brick1/xvdf"
+                            }
+                        }
                     },
                     "config-repo": {
                         "files": {
@@ -35,11 +55,19 @@
                                 "glusterfs-server": [],
                                 "glusterfs-fuse": []
                             }
+                        },
+                        "services": {
+                            "sysvinit": {
+                                "glusterd": {
+                                    "enabled": "true"
+                                }
+                            }
                         }
                     }
                 }
             },
             "Properties": {
+                "AvailabilityZone": "sa-east-1a",
                 "SecurityGroups": [
                     {
                         "Ref": "InstanceSecurityGroup"
@@ -49,18 +77,12 @@
                     "Ref": "KeyName"
                 },
                 "ImageId": "ami-5253894f",
-                "BlockDeviceMappings": [
+                "Volumes": [
                     {
-                        "DeviceName": "/dev/sda1",
-                        "Ebs": {
-                            "VolumeSize": "10"
-                        }
-                    },
-                    {
-                        "DeviceName": "/dev/xvdf",
-                        "Ebs": {
-                            "VolumeSize": "100"
-                        }
+                        "VolumeId": {
+                            "Ref": "Node01Brick"
+                        },
+                        "Device": "/dev/xvdf"
                     }
                 ],
                 "UserData": {
@@ -79,11 +101,20 @@
                                 {
                                     "Ref": "AWS::Region"
                                 },
-                                " || error_exit 'Failed to run cfn-init'\n"
+                                " || error_exit 'Failed to run cfn-init'\n",
+                                "\n",
+                                ""
                             ]
                         ]
                     }
                 }
+            }
+        },
+        "Node01Brick": {
+            "Type": "AWS::EC2::Volume",
+            "Properties": {
+                "Size": "100",
+                "AvailabilityZone": "sa-east-1a"
             }
         },
         "InstanceSecurityGroup": {
