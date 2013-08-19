@@ -17,7 +17,7 @@
       "Metadata" : {
         "AWS::CloudFormation::Init" : {
           "configSets" : {
-            "ascending" : [ "config-repo" , "config-gluster" ]
+            "default" : [ "config-repo" , "config-gluster" ]
           },
 
           "config-repo":{
