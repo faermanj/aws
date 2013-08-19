@@ -4,22 +4,50 @@
   "Description" : "Gluster FS Local Cluster",
 
   "Parameters" : {
-    "KeyName" : {
+    "KeyName" : {      
       "Description" : "Name of and existing EC2 KeyPair to enable SSH access to the instance",
-      "Type" : "String"
+      "Type" : "String",
+      "Default": "sa-east_faermaj-kp"
     }
   },
 
   "Resources" : {
     "Ec2Instance" : {
       "Type" : "AWS::EC2::Instance",
+      "Metadata" : {
+      "AWS::CloudFormation::Init" : {
+        "configSets" : {
+          "ascending" : [ "config-repo" , "config-gluster" ]
+        },
+
+        "config-repo":{
+          "files": {
+            "/etc/yum.repos.d/glusterfs.repo": {
+              "source":"https://raw.github.com/jfaerman/aws/master/glusterfs.repo"
+            }
+          }
+        },
+
+        "config-gluster" : {
+          "packages" : {            
+            "yum" : {
+              "binutils" : [],
+              "xfsprogs" : [],
+              "glusterfs" : [],
+              "glusterfs-server" : [],
+              "glusterfs-fuse" : []
+            }
+          }
+        }
+      }
+    },
       "Properties" : {
         "SecurityGroups" : [ { "Ref" : "InstanceSecurityGroup" } ],
         "KeyName" : { "Ref" : "KeyName" },
         "ImageId" : "ami-5253894f",
         "BlockDeviceMappings" : [
            {
-              "DeviceName" : "/dev/xvda1",
+              "DeviceName" : "/dev/sda1",
               "Ebs" : { "VolumeSize" : "10" }
            },
            {
@@ -28,8 +56,6 @@
            }
         ]   
       }
-
-
     },
 
     "InstanceSecurityGroup" : {
