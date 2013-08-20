@@ -6,10 +6,21 @@
             "Description": "Name of and existing EC2 KeyPair to enable SSH access to the instance",
             "Type": "String",
             "Default": "sa-east_faermaj-kp"
+        },
+        "NiceMessage": {
+            "Type": "String",
+            "Default": "Hello World!"
+        },
+        "InstanceSecurityGroup": {
+            "Type": "String"
+        },
+        "InstanceScript": {
+            "Type": "String",
+            "Default": ""            
         }
     },
     "Resources": {
-        "GlusterNode01": {
+        "GlusterNode": {
             "Type": "AWS::EC2::Instance",
             "Metadata": {
                 "AWS::CloudFormation::Init": {
@@ -85,7 +96,7 @@
                 "Volumes": [
                     {
                         "VolumeId": {
-                            "Ref": "Node01Brick"
+                            "Ref": "NodeBrick"
                         },
                         "Device": "/dev/xvdf"
                     }
@@ -101,49 +112,51 @@
                                 {
                                     "Ref": "AWS::StackId"
                                 },
-                                " -r GlusterNode01 ",
+                                " -r GlusterNode ",
                                 "    --region ",
                                 {
                                     "Ref": "AWS::Region"
                                 },
                                 " || error_exit 'Failed to run cfn-init'\n",
                                 "\n",
-                                ""
+                                "echo '",
+                                {
+                                    "Ref": "NiceMessage"
+                                },
+                                "' > /var/log/nice.msg ",
+                                "\n",
+                                {
+                                    "Ref": "InstanceScript"
+                                }
                             ]
                         ]
                     }
                 }
             }
         },
-        "Node01Brick": {
+        "NodeBrick": {
             "Type": "AWS::EC2::Volume",
             "Properties": {
                 "Size": "100",
                 "AvailabilityZone": "sa-east-1a"
             }
-        },
-        "InstanceSecurityGroup": {
-            "Type": "AWS::EC2::SecurityGroup",
-            "Properties": {
-                "GroupDescription": "Enable SSH access via port 22",
-                "SecurityGroupIngress": [
-                    {
-                        "IpProtocol": "tcp",
-                        "FromPort": "22",
-                        "ToPort": "22",
-                        "CidrIp": "0.0.0.0/0"
-                    }
-                ]
-            }
         }
     },
     "Outputs": {
-        "PublicIP": {
+        "PublicIp": {
             "Description": "Public IP address of the newly created EC2 instance",
             "Value": {
                 "Fn::GetAtt": [
-                    "GlusterNode01",
+                    "GlusterNode",
                     "PublicIp"
+                ]
+            }
+        },
+        "PrivateIp": {
+            "Value": {
+                "Fn::GetAtt": [
+                    "GlusterNode",
+                    "PrivateIp"
                 ]
             }
         }
