@@ -21,6 +21,7 @@
                 }
             }
         },
+
         "Node02": {
             "Type": "AWS::CloudFormation::Stack",
             "DependsOn": "Node01",
@@ -34,18 +35,16 @@
                     "InstanceScript": {
                         "Fn::Join": [
                             "",
-                            [   "sleep 5",
-                                "\n",
-                                "echo [probing peer]",
-                                "\n",
-                                "gluster peer probe ",
+                            [   "gluster peer probe ",
                                 {
                                     "Fn::GetAtt": [
                                         "Node01",
                                         "Outputs.PrivateIp"
                                     ]
                                 },
-                                " >> /var/log/gluster_probe.log",
+                                " >> /var/log/gluster_probe.log",                                
+                                "\n",
+                                "echo waiting... && sleep 5",
                                 "\n",
                                 "gluster volume create gv0 rep 2 transport tcp ",
                                 {
@@ -56,7 +55,7 @@
                                 },
                                 ":/export/brick1/xvdf ",
                                 "$(curl -s http://169.254.169.254/latest/meta-data/local-ipv4)",
-                                ":/export/brick1/xvdf > > /var/log/gluster_volume_create.log",
+                                ":/export/brick1/xvdf >> /var/log/gluster_volume_create.log",
                                 "\n",
                                 "gluster volume start gv0 > /var/log/gluster_volume_start.log",
                                 "\n",
