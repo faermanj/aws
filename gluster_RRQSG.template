@@ -34,7 +34,10 @@
                     "InstanceScript": {
                         "Fn::Join": [
                             "",
-                            [
+                            [   "sleep 5",
+                                "\n",
+                                "echo [probing peer]",
+                                "\n",
                                 "gluster peer probe ",
                                 {
                                     "Fn::GetAtt": [
@@ -42,7 +45,7 @@
                                         "Outputs.PrivateIp"
                                     ]
                                 },
-                                " >> /var/log/gluster-probe.log",
+                                " >> /var/log/gluster_probe.log",
                                 "\n",
                                 "gluster volume create gv0 rep 2 transport tcp ",
                                 {
@@ -52,14 +55,16 @@
                                     ]
                                 },
                                 ":/export/brick1/xvdf ",
-                                "$(curl http://169.254.169.254/latest/meta-data/local-ipv4)",
-                                ":/export/brick1/xvdf",
+                                "$(curl -s http://169.254.169.254/latest/meta-data/local-ipv4)",
+                                ":/export/brick1/xvdf > > /var/log/gluster_volume_create.log",
                                 "\n",
-                                "gluster volume start gv0",
+                                "gluster volume start gv0 > /var/log/gluster_volume_start.log",
                                 "\n",
                                 "gluster volume info > /var/log/gluster_volume_info.log",
                                 "\n",
-                                "mkdir -p /mnt/gluster; mount -t glusterfs ",
+                                "mkdir -p /mnt/gluster",
+                                "\n",
+                                "mount -t glusterfs ",
                                 {
                                     "Fn::GetAtt": [
                                         "Node01",
@@ -82,11 +87,25 @@
                 "SecurityGroupIngress": [
                     {
                         "IpProtocol": "tcp",
-                        "FromPort": "0",
-                        "ToPort": "65535",
+                        "FromPort": "22",
+                        "ToPort": "22",
                         "CidrIp": "0.0.0.0/0"
                     }
                 ]
+            }
+        },
+        "InstanceSecurityGroupIngress": {
+            "Type": "AWS::EC2::SecurityGroupIngress",
+            "Properties": {
+                "GroupName": {
+                    "Ref": "InstanceSecurityGroup"
+                },
+                "IpProtocol": "tcp",
+                "FromPort": "0",
+                "ToPort": "65535",
+                "SourceSecurityGroupName": {
+                    "Ref": "InstanceSecurityGroup"
+                }
             }
         }
     },
