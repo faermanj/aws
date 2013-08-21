@@ -1,0 +1,164 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "Gluster FS Local Cluster",
+    "Parameters": {
+        "KeyName": {
+            "Description": "Name of and existing EC2 KeyPair to enable SSH access to the instance",
+            "Type": "String",
+            "Default": "sa-east_faermaj-kp"
+        },
+        "NiceMessage": {
+            "Type": "String",
+            "Default": "Hello World!"
+        },
+        "InstanceSecurityGroup": {
+            "Type": "String"
+        },
+        "InstanceScript": {
+            "Type": "String",
+            "Default": ""            
+        }
+    },
+    "Resources": {
+        "GlusterNode": {
+            "Type": "AWS::EC2::Instance",
+            "Metadata": {
+                "AWS::CloudFormation::Init": {
+                    "configSets": {
+                        "default": [
+                            "config-brick",
+                            "config-repo",
+                            "config-gluster"
+                        ]
+                    },
+                    "config-brick": {
+                        "packages": {
+                            "yum": {
+                                "binutils": [],
+                                "xfsprogs": []
+                            }
+                        },
+                        "commands": {
+                            "format-volume": {
+                                "command": "mkfs.xfs -i size=512 /dev/xvdf"
+                            },
+                            "create-mount-point": {
+                                "command": "mkdir -p /export/brick1"
+                            },
+                            "map-fstab": {
+                                "command": "echo '/dev/xvdf /export/brick1 xfs defaults 1 2' >> /etc/fstab"
+                            },
+                            "remount": {
+                                "command": "mount -a && mount"
+                            },
+                            "create-subdir": {
+                                "command": "mkdir /export/brick1/xvdf"
+                            }
+                        }
+                    },
+                    "config-repo": {
+                        "files": {
+                            "/etc/yum.repos.d/glusterfs.repo": {
+                                "source": "https://raw.github.com/jfaerman/aws/master/glusterfs.repo"
+                            }
+                        }
+                    },
+                    "config-gluster": {
+                        "packages": {
+                            "yum": {
+                                "glusterfs": [],
+                                "glusterfs-server": [],
+                                "glusterfs-fuse": []
+                            }
+                        },
+                        "services": {
+                            "sysvinit": {
+                                "glusterd": {
+                                    "enabled": "true",
+                                    "ensureRunning": "true"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "Properties": {
+                "AvailabilityZone": "sa-east-1a",
+                "SecurityGroups": [
+                    {
+                        "Ref": "InstanceSecurityGroup"
+                    }
+                ],
+                "KeyName": {
+                    "Ref": "KeyName"
+                },
+                "ImageId": "ami-5253894f",
+                "Volumes": [
+                    {
+                        "VolumeId": {
+                            "Ref": "NodeBrick"
+                        },
+                        "Device": "/dev/xvdf"
+                    }
+                ],
+                "UserData": {
+                    "Fn::Base64": {
+                        "Fn::Join": [
+                            "",
+                            [
+                                "#!/bin/bash -v\n",
+                                "yum update -y aws-cfn-bootstrap\n",
+                                "/opt/aws/bin/cfn-init -s ",
+                                {
+                                    "Ref": "AWS::StackId"
+                                },
+                                " -r GlusterNode ",
+                                "    --region ",
+                                {
+                                    "Ref": "AWS::Region"
+                                },
+                                " || error_exit 'Failed to run cfn-init'\n",
+                                "\n",
+                                "echo '",
+                                {
+                                    "Ref": "NiceMessage"
+                                },
+                                "' > /var/log/nice.msg ",
+                                "\n",
+                                {
+                                    "Ref": "InstanceScript"
+                                }
+                            ]
+                        ]
+                    }
+                }
+            }
+        },
+        "NodeBrick": {
+            "Type": "AWS::EC2::Volume",
+            "Properties": {
+                "Size": "100",
+                "AvailabilityZone": "sa-east-1a"
+            }
+        }
+    },
+    "Outputs": {
+        "PublicIp": {
+            "Description": "Public IP address of the newly created EC2 instance",
+            "Value": {
+                "Fn::GetAtt": [
+                    "GlusterNode",
+                    "PublicIp"
+                ]
+            }
+        },
+        "PrivateIp": {
+            "Value": {
+                "Fn::GetAtt": [
+                    "GlusterNode",
+                    "PrivateIp"
+                ]
+            }
+        }
+    }
+}

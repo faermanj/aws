@@ -1,0 +1,129 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "Gluster FS Really Really Quick Start Guide from http://www.gluster.org/community/documentation/index.php/QuickStart",
+    "Parameters": {
+        "KeyName": {
+            "Description": "Name of and existing EC2 KeyPair to enable SSH access to the instance",
+            "Type": "String",
+            "Default": "sa-east_faermaj-kp"
+        }
+    },
+    "Resources": {
+        "Node01": {
+            "Type": "AWS::CloudFormation::Stack",
+            "Properties": {
+                "TemplateURL": "https://s3-sa-east-1.amazonaws.com/faermanj/cfn/glusterfs/rrqsg/gluster_RRQSG_node.template",
+                "Parameters": {
+                    "NiceMessage": "Hello, I am Node 01",
+                    "InstanceSecurityGroup": {
+                        "Ref": "InstanceSecurityGroup"
+                    }
+                }
+            }
+        },
+
+        "Node02": {
+            "Type": "AWS::CloudFormation::Stack",
+            "DependsOn": "Node01",
+            "Properties": {
+                "TemplateURL": "https://s3-sa-east-1.amazonaws.com/faermanj/cfn/glusterfs/rrqsg/gluster_RRQSG_node.template",
+                "Parameters": {
+                    "NiceMessage": "Hello, I am Node 02",
+                    "InstanceSecurityGroup": {
+                        "Ref": "InstanceSecurityGroup"
+                    },
+                    "InstanceScript": {
+                        "Fn::Join": [
+                            "",
+                            [   "gluster peer probe ",
+                                {
+                                    "Fn::GetAtt": [
+                                        "Node01",
+                                        "Outputs.PrivateIp"
+                                    ]
+                                },
+                                " >> /var/log/gluster_probe.log",                                
+                                "\n",
+                                "echo waiting... && sleep 5",
+                                "\n",
+                                "gluster volume create gv0 rep 2 transport tcp ",
+                                {
+                                    "Fn::GetAtt": [
+                                        "Node01",
+                                        "Outputs.PrivateIp"
+                                    ]
+                                },
+                                ":/export/brick1/xvdf ",
+                                "$(curl -s http://169.254.169.254/latest/meta-data/local-ipv4)",
+                                ":/export/brick1/xvdf >> /var/log/gluster_volume_create.log",
+                                "\n",
+                                "gluster volume start gv0 > /var/log/gluster_volume_start.log",
+                                "\n",
+                                "gluster volume info > /var/log/gluster_volume_info.log",
+                                "\n",
+                                "mkdir -p /mnt/gluster",
+                                "\n",
+                                "mount -t glusterfs ",
+                                {
+                                    "Fn::GetAtt": [
+                                        "Node01",
+                                        "Outputs.PrivateIp"
+                                    ]
+                                },
+                                ":/gv0 /mnt/gluster",
+                                "\n",
+                                "date > /mnt/gluster/date.txt  "
+                            ]
+                        ]
+                    }
+                }
+            }
+        },
+        "InstanceSecurityGroup": {
+            "Type": "AWS::EC2::SecurityGroup",
+            "Properties": {
+                "GroupDescription": "Enable SSH access via port 22",
+                "SecurityGroupIngress": [
+                    {
+                        "IpProtocol": "tcp",
+                        "FromPort": "22",
+                        "ToPort": "22",
+                        "CidrIp": "0.0.0.0/0"
+                    }
+                ]
+            }
+        },
+        "InstanceSecurityGroupIngress": {
+            "Type": "AWS::EC2::SecurityGroupIngress",
+            "Properties": {
+                "GroupName": {
+                    "Ref": "InstanceSecurityGroup"
+                },
+                "IpProtocol": "tcp",
+                "FromPort": "0",
+                "ToPort": "65535",
+                "SourceSecurityGroupName": {
+                    "Ref": "InstanceSecurityGroup"
+                }
+            }
+        }
+    },
+    "Outputs": {
+        "Node01Ip": {
+            "Value": {
+                "Fn::GetAtt": [
+                    "Node01",
+                    "Outputs.PublicIp"
+                ]
+            }
+        },
+        "Node02Ip": {
+            "Value": {
+                "Fn::GetAtt": [
+                    "Node02",
+                    "Outputs.PublicIp"
+                ]
+            }
+        }
+    }
+}
