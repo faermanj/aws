@@ -49,7 +49,7 @@
                                 "command": "echo '/dev/xvdf /export/brick1 xfs defaults 1 2' >> /etc/fstab"
                             },
                             "remount": {
-                                "command": "mount -a && mount"
+                                "command": "mount -a && mount ######"
                             },
                             "create-subdir": {
                                 "command": "mkdir /export/brick1/xvdf"
